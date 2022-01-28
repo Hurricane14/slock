@@ -137,6 +137,7 @@ showimage(Display *dpy, Window win)
 
     XPutImage(dpy, win, DefaultGC(dpy, 0), ximage, 0, 0, imgoffsetx, imgoffsety, imgwidth, imgheight);
   }
+  puts(strerror(errno));
 }
 
 static void

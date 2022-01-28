@@ -11,12 +11,12 @@ static const char *colorname[NUMCOLS] = {
 /* treat a cleared input like a wrong password (color) */
 static const int failonclear = 1;
 
-static const char *imgpath          = "image.xpm";
+static const char *imgpath          = "/media/software/slock/image.xpm";
 static const int imgwidth           = 1920;
 static const int imgheight          = 1080;
 static const int imgoffsetx         = 0;
 static const int imgoffsety         = 0;
-static const int showimgonlyatstart = 1;
+static const int showimgonlyatstart = 0;
 
 /* time in seconds before the monitor shuts down */
 static const int monitortime = 5;
