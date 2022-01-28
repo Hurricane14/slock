@@ -25,6 +25,7 @@
 #include "util.h"
 
 char *argv0;
+XImage *ximage;
 
 enum {
 	INIT,
@@ -127,17 +128,25 @@ gethash(void)
 }
 
 static void
+loadimage(Display *dpy)
+{
+	if (!XpmReadFileToImage(dpy, imgpath, &ximage, NULL, NULL))
+		return;
+	fprintf(stderr, "%s", strerror(errno));
+	ximage = NULL;
+}
+
+static void
 showimage(Display *dpy, Window win)
 {
-  XImage *ximage;
+	if (ximage == NULL) {
+		return;
+	}
 
-  if (!XpmReadFileToImage (dpy, imgpath, &ximage, NULL, NULL)) {
-    XSelectInput(dpy, win, ButtonPressMask|ExposureMask);
-    XMapWindow(dpy, win);
+	XSelectInput(dpy, win, ButtonPressMask|ExposureMask);
+	XMapWindow(dpy, win);
 
-    XPutImage(dpy, win, DefaultGC(dpy, 0), ximage, 0, 0, imgoffsetx, imgoffsety, imgwidth, imgheight);
-  }
-  puts(strerror(errno));
+	XPutImage(dpy, win, DefaultGC(dpy, 0), ximage, 0, 0, imgoffsetx, imgoffsety, imgwidth, imgheight);
 }
 
 static void
@@ -274,7 +283,7 @@ lockscreen(Display *dpy, struct xrandr *rr, int screen)
 	                                &color, &color, 0, 0);
 	XDefineCursor(dpy, lock->win, invisible);
 
-  showimage(dpy, lock->win);
+	showimage(dpy, lock->win);
 
 	/* Try to grab mouse pointer *and* keyboard for 600ms, else fail the lock */
 	for (i = 0, ptgrab = kbgrab = -1; i < 6; i++) {
@@ -375,6 +384,8 @@ main(int argc, char **argv) {
 		die("slock: setgid: %s\n", strerror(errno));
 	if (setuid(duid) < 0)
 		die("slock: setuid: %s\n", strerror(errno));
+
+	loadimage(dpy);
 
 	/* check for Xrandr support */
 	rr.active = XRRQueryExtension(dpy, &rr.evbase, &rr.errbase);
