@@ -212,18 +212,23 @@ readpw(Display *dpy, struct xrandr *rr, struct lock **locks, int nscreens,
 				}
 				break;
 			}
-			color = len ? INPUT : ((failure || failonclear) ? FAILED : INIT);
-			if (running && oldc != color) {
-				for (screen = 0; screen < nscreens; screen++) {
-					XSetWindowBackground(dpy,
-					                     locks[screen]->win,
-					                     locks[screen]->colors[color]);
-					XClearWindow(dpy, locks[screen]->win);
-          if (showimgonlyatstart != 1)
-            showimage(dpy, locks[screen]->win);
-				}
-				oldc = color;
+			if (!running) {
+				continue;
 			}
+			color = len ? INPUT : ((failure || failonclear) ? FAILED : INIT);
+			for (screen = 0; screen < nscreens; screen++) {
+				if (color == INIT || showimgalways) {
+					showimage(dpy, locks[screen]->win);
+					continue;
+				}
+				if (oldc == color)
+					continue;
+				XSetWindowBackground(dpy,
+			 	 					 locks[screen]->win,
+			 	 					 locks[screen]->colors[color]);
+				XClearWindow(dpy, locks[screen]->win);
+			}
+			oldc = color;
 		} else if (rr->active && ev.type == rr->evbase + RRScreenChangeNotify) {
 			rre = (XRRScreenChangeNotifyEvent*)&ev;
 			for (screen = 0; screen < nscreens; screen++) {
