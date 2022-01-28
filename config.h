@@ -16,7 +16,7 @@ static const int imgwidth           = 1920;
 static const int imgheight          = 1080;
 static const int imgoffsetx         = 0;
 static const int imgoffsety         = 0;
-static const int showimgonlyatstart = 1;
+static const int showimgonlyatstart = 0;
 
 /* time in seconds before the monitor shuts down */
 static const int monitortime = 5;

@@ -15,9 +15,11 @@
 #include <unistd.h>
 #include <sys/types.h>
 #include <X11/extensions/Xrandr.h>
+#include <X11/extensions/dpms.h>
 #include <X11/keysym.h>
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
+#include <X11/xpm.h>
 
 #include "arg.h"
 #include "util.h"
@@ -125,6 +127,19 @@ gethash(void)
 }
 
 static void
+showimage(Display *dpy, Window win)
+{
+  XImage *ximage;
+
+  if (!XpmReadFileToImage (dpy, imgpath, &ximage, NULL, NULL)) {
+    XSelectInput(dpy, win, ButtonPressMask|ExposureMask);
+    XMapWindow(dpy, win);
+
+    XPutImage(dpy, win, DefaultGC(dpy, 0), ximage, 0, 0, imgoffsetx, imgoffsety, imgwidth, imgheight);
+  }
+}
+
+static void
 readpw(Display *dpy, struct xrandr *rr, struct lock **locks, int nscreens,
        const char *hash)
 {
@@ -194,6 +209,8 @@ readpw(Display *dpy, struct xrandr *rr, struct lock **locks, int nscreens,
 					                     locks[screen]->win,
 					                     locks[screen]->colors[color]);
 					XClearWindow(dpy, locks[screen]->win);
+          if (showimgonlyatstart != 1)
+            showimage(dpy, locks[screen]->win);
 				}
 				oldc = color;
 			}
@@ -256,6 +273,8 @@ lockscreen(Display *dpy, struct xrandr *rr, int screen)
 	                                &color, &color, 0, 0);
 	XDefineCursor(dpy, lock->win, invisible);
 
+  showimage(dpy, lock->win);
+
 	/* Try to grab mouse pointer *and* keyboard for 600ms, else fail the lock */
 	for (i = 0, ptgrab = kbgrab = -1; i < 6; i++) {
 		if (ptgrab != GrabSuccess) {
@@ -314,6 +333,7 @@ main(int argc, char **argv) {
 	const char *hash;
 	Display *dpy;
 	int s, nlocks, nscreens;
+	CARD16 standby, suspend, off;
 
 	ARGBEGIN {
 	case 'v':
@@ -374,6 +394,20 @@ main(int argc, char **argv) {
 	if (nlocks != nscreens)
 		return 1;
 
+	/* DPMS magic to disable the monitor */
+	if (!DPMSCapable(dpy))
+		die("slock: DPMSCapable failed\n");
+	if (!DPMSEnable(dpy))
+		die("slock: DPMSEnable failed\n");
+	if (!DPMSGetTimeouts(dpy, &standby, &suspend, &off))
+		die("slock: DPMSGetTimeouts failed\n");
+	if (!standby || !suspend || !off)
+		die("slock: at least one DPMS variable is zero\n");
+	if (!DPMSSetTimeouts(dpy, monitortime, monitortime, monitortime))
+		die("slock: DPMSSetTimeouts failed\n");
+
+	XSync(dpy, 0);
+
 	/* run post-lock command */
 	if (argc > 0) {
 		switch (fork()) {
@@ -390,6 +424,10 @@ main(int argc, char **argv) {
 
 	/* everything is now blank. Wait for the correct password */
 	readpw(dpy, &rr, locks, nscreens, hash);
+
+	/* reset DPMS values to inital ones */
+	DPMSSetTimeouts(dpy, standby, suspend, off);
+	XSync(dpy, 0);
 
 	return 0;
 }
